@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let OPENAI_API_KEY = null; // 🔥 ahora es dinámica
 
-  const WAKE_WORD = "alexa";
+  const WAKE_WORD = "Macario";
   const IDLE_MS = 10000;
 
   const ALLOWED_OUTPUTS = new Set([
@@ -119,7 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     idleTimer = setTimeout(() => {
       suspended = true;
       setMode("Suspendido", "pill-sleep");
-      setSubstatus('Suspendido por inactividad. Di "Alexa" para despertar.');
+      setSubstatus('Suspendido por inactividad. Di "Macario" para despertar.');
       safeText(commandEl, "—");
     }, IDLE_MS);
   }
@@ -172,7 +172,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   setMode("Suspendido", "pill-sleep");
-  setSubstatus('Sistema en reposo. Di "Alexa" para activar.');
+  setSubstatus('Sistema en reposo. Di "Macario" para activar.');
   safeStart();
 
   /* =========================
