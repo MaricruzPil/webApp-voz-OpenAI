@@ -1,0 +1,189 @@
+/* =========================
+   GLOBAL
+========================= */
+
+body {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  background: linear-gradient(135deg, #03121f, #000814);
+  color: #00eaff;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.topbar {
+  background: linear-gradient(90deg, #001f2f, #002d46);
+  padding: 15px 25px;
+  border-bottom: 1px solid #00eaff33;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #00eaff;
+}
+
+.subtitle {
+  font-size: 0.7rem;
+  color: #00aaff;
+}
+
+.logo-box {
+  width: 40px;
+  height: 40px;
+  background: #002f4f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #00eaff55;
+  font-size: 20px;
+}
+
+/* =========================
+   STATUS
+========================= */
+
+.status-pill {
+  padding: 6px 18px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pill-active {
+  background: linear-gradient(90deg, #00c6ff, #0072ff);
+  color: #fff;
+  box-shadow: 0 0 12px #00c6ff;
+}
+
+/*.pill-sleep {
+  background: #fcfbfb;
+  color: #ccc;
+}*/
+
+.pill-error {
+  background: #ff3c5f;
+  color: #fff;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  background: #00eaff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00eaff;
+}
+
+/* =========================
+   MAIN PANEL
+========================= */
+
+.main-panel {
+  padding: 40px 60px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.panel-header h2 {
+  font-size: 1.2rem;
+  color: #00eaff;
+}
+
+.version {
+  font-size: 0.7rem;
+  color: #0088aa;
+}
+
+/* =========================
+   AUDIO VISUAL
+========================= */
+
+.audio-visual {
+  height: 120px;
+  background: #001522;
+  border-radius: 15px;
+  border: 1px solid #00eaff33;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wave {
+  width: 200px;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #00eaff, transparent);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scaleX(0.5); opacity: 0.3; }
+  50% { transform: scaleX(1.2); opacity: 1; }
+  100% { transform: scaleX(0.5); opacity: 0.3; }
+}
+
+/* =========================
+   DISPLAY BOXES
+========================= */
+
+.section {
+  margin-bottom: 25px;
+}
+
+.section label {
+  font-size: 0.75rem;
+  color: #00aaff;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.display-box {
+  background: #000f1a;
+  border: 1px solid #00eaff33;
+  padding: 18px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  color: #ccefff;
+}
+
+.command-box {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #00eaff;
+}
+
+
+
+/* =========================
+   FOOTER
+========================= */
+
+.footer-tech {
+  margin-top: 50px;
+  padding: 20px;
+  text-align: center;
+  background: #000a14;
+  border-top: 1px solid #00eaff33;
+  font-size: 0.8rem;
+  color: #3e5864;
+}
+
+/* =========================
+   HIDDEN SUBSTATUS
+========================= */
+
+.substatus-hidden {
+  display: none;
+}

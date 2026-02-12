@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control por Voz IA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Google Font Tecnológica -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ================= HEADER ================= -->
+<header class="topbar">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+
+    <div class="d-flex align-items-center gap-3">
+      <div class="logo-box">
+        <i class="bi bi-lightning-charge-fill"></i>
+      </div>
+      <div>
+        <h1 class="title">CONTROL POR VOZ</h1>
+        <small class="subtitle"> Me llamo Alexa</small>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-3">
+      <div id="modePill" class="status-pill pill-active">
+        <i class="bi bi-wifi"></i> ACTIVO
+      </div>
+      <div class="status-dot"></div>
+    </div>
+
+  </div>
+</header>
+
+<!-- ================= MAIN PANEL ================= -->
+<main class="container-fluid main-panel">
+
+  <div class="panel-header">
+    <h2><i class="bi bi-volume-up-fill"></i> TE ESCUCHO...</h2>
+    <span class="version">IHC</span>
+  </div>
+
+  <!-- Audio Visual -->
+  <div class="audio-visual">
+    <div class="wave"></div>
+  </div>
+
+  <!-- TEXTO DETECTADO -->
+  <div class="section">
+    <label>TEXTO DETECTADO</label>
+    <div class="display-box">
+      <span id="transcript">Esperando comando de voz...</span>
+    </div>
+  </div>
+
+  <!-- COMANDO -->
+  <div class="section">
+    <label>ORDEN DETECTADA</label>
+    <div class="display-box command-box">
+      <span id="command">SISTEMA ACTIVADO</span>
+    </div>
+  </div>
+
+  <!-- SUBSTATUS (oculto visualmente pero necesario para JS) -->
+  <div id="substatus" class="substatus-hidden"></div>
+
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer-tech">
+  <p>
+    Desarrollado por <strong>Maricruz Pineda Lara</strong><br>
+    TecNM Pachuca 2026
+  </p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
