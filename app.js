@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let OPENAI_API_KEY = null; // 🔥 ahora es dinámica
 
-  const WAKE_WORD = "Macario";
+  const WAKE_WORD = "macario";
   const IDLE_MS = 10000;
 
   const ALLOWED_OUTPUTS = new Set([
@@ -80,17 +80,41 @@ document.addEventListener("DOMContentLoaded", async () => {
   function localMapCommand(t) {
     const s = normalize(t);
 
-    if (/(^|\b)(adelante|avanza|avance|avanzar)(\b|$)/.test(s)) return "avanzar";
-    if (/(^|\b)(atrás|atras|retrocede|retroceder)(\b|$)/.test(s)) return "retroceder";
-    if (/(^|\b)(alto|detente|detener|stop|parar)(\b|$)/.test(s)) return "detener";
+      // ===== AVANZAR =====
+    if (/(^|\b)(adelante|avanza|avanzar|avance|hacia enfrente|frente|ve al frente|sigue recto|camina al frente|muevete al frente|continua recto|sigue derecho)(\b|$)/.test(s))
+      return "avanzar";
 
-    if (/(derecha)/.test(s) && /(90|noventa)/.test(s)) return "90° derecha";
-    if (/(izquierda)/.test(s) && /(90|noventa)/.test(s)) return "90° izquierda";
-    if (/(derecha)/.test(s) && /(360|trescientos sesenta)/.test(s)) return "360° derecha";
-    if (/(izquierda)/.test(s) && /(360|trescientos sesenta)/.test(s)) return "360° izquierda";
+    // ===== RETROCEDER =====
+    if (/(^|\b)(atras|retrocede|retroceder|hacia atras|para atras|da marcha atras|marcha atras|regresa|retrocede un poco)(\b|$)/.test(s))
+      return "retroceder";
 
-    if (/(vuelta|gira|girar)/.test(s) && /derecha/.test(s)) return "vuelta derecha";
-    if (/(vuelta|gira|girar)/.test(s) && /izquierda/.test(s)) return "vuelta izquierda";
+    // ===== DETENER =====
+    if (/(^|\b)(alto|detente|detener|para|parar|frena|stop|quieto|no te muevas|no te mueva|quedate|espera)(\b|$)/.test(s))
+      return "detener";
+
+    // ===== 360° (vuelta completa) =====
+    if (/(360|trescientos sesenta|vuelta completa|giro completo|vuelta entera|giro entero|da una vuelta completa|haz una vuelta completa)/.test(s)) {
+      if (/derecha/.test(s)) return "360° derecha";
+      if (/izquierda/.test(s)) return "360° izquierda";
+    }
+
+    // También si dicen 360 explícitamente
+    if (/(360|trescientos sesenta)/.test(s)) {
+      if (/derecha/.test(s)) return "360° derecha";
+      if (/izquierda/.test(s)) return "360° izquierda";
+    }
+
+    // ===== 90° =====
+    if (/(90|noventa|cuarto de vuelta|media vuelta corta)/.test(s)) {
+      if (/derecha/.test(s)) return "90° derecha";
+      if (/izquierda/.test(s)) return "90° izquierda";
+    }
+
+    // ===== VUELTAS NORMALES =====
+    if (/(vuelta|gira|girar|dobla|doblar|voltea|volteate|voltearse)/.test(s)) {
+      if (/derecha/.test(s)) return "vuelta derecha";
+      if (/izquierda/.test(s)) return "vuelta izquierda";
+    }
 
     return null;
   }
