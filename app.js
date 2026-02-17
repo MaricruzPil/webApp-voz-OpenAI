@@ -1,11 +1,10 @@
 document.addEventListener("DOMContentLoaded", async () => {
-
   const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
   const MOCKAPI_URL = "https://698def5eaded595c25309065.mockapi.io/api/v1/apyKey";
 
   let OPENAI_API_KEY = null; // 🔥 ahora es dinámica
 
-  const WAKE_WORD = "macario";
+  const WAKE_WORD = "macaria";
   const IDLE_MS = 10000;
 
   const ALLOWED_OUTPUTS = new Set([
@@ -74,50 +73,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 🔥 Cargar API Key al iniciar
   OPENAI_API_KEY = await getApiKeyFromMockAPI();
 
-  /* =========================
-     Mapeo local
-  ========================= */
-  function localMapCommand(t) {
-    const s = normalize(t);
 
-      // ===== AVANZAR =====
-    if (/(^|\b)(adelante|avanza|avanzar|avance|hacia enfrente|frente|ve al frente|sigue recto|camina al frente|muevete al frente|continua recto|sigue derecho)(\b|$)/.test(s))
-      return "avanzar";
 
-    // ===== RETROCEDER =====
-    if (/(^|\b)(atras|retrocede|retroceder|hacia atras|para atras|da marcha atras|marcha atras|regresa|retrocede un poco)(\b|$)/.test(s))
-      return "retroceder";
 
-    // ===== DETENER =====
-    if (/(^|\b)(alto|detente|detener|para|parar|frena|stop|quieto|no te muevas|no te mueva|quedate|espera)(\b|$)/.test(s))
-      return "detener";
 
-    // ===== 360° (vuelta completa) =====
-    if (/(360|trescientos sesenta|vuelta completa|giro completo|vuelta entera|giro entero|da una vuelta completa|haz una vuelta completa)/.test(s)) {
-      if (/derecha/.test(s)) return "360° derecha";
-      if (/izquierda/.test(s)) return "360° izquierda";
-    }
 
-    // También si dicen 360 explícitamente
-    if (/(360|trescientos sesenta)/.test(s)) {
-      if (/derecha/.test(s)) return "360° derecha";
-      if (/izquierda/.test(s)) return "360° izquierda";
-    }
-
-    // ===== 90° =====
-    if (/(90|noventa|cuarto de vuelta|media vuelta corta)/.test(s)) {
-      if (/derecha/.test(s)) return "90° derecha";
-      if (/izquierda/.test(s)) return "90° izquierda";
-    }
-
-    // ===== VUELTAS NORMALES =====
-    if (/(vuelta|gira|girar|dobla|doblar|voltea|volteate|voltearse)/.test(s)) {
-      if (/derecha/.test(s)) return "vuelta derecha";
-      if (/izquierda/.test(s)) return "vuelta izquierda";
-    }
-
-    return null;
-  }
 
   /* =========================
      SPEECH RECOGNITION
@@ -153,41 +113,39 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   recognition.onresult = async (event) => {
-    const last = event.results[event.results.length - 1];
-    const raw = last?.[0]?.transcript?.trim() || "";
-    if (!raw) return;
+  const last = event.results[event.results.length - 1];
+  const raw = last?.[0]?.transcript?.trim() || "";
+  if (!raw) return;
 
-    safeText(transcriptEl, raw);
-    resetIdleTimer();
+  safeText(transcriptEl, raw);
+  resetIdleTimer();
 
-    const lower = normalize(raw);
+  const lower = normalize(raw);
 
-    if (suspended) {
-      if (lower.includes(WAKE_WORD)) {
-        suspended = false;
-        setMode("Activo", "pill-active");
-        setSubstatus("Despierto. Escuchando órdenes…");
-      }
-      return;
+  if (suspended) {
+    if (lower.includes(WAKE_WORD)) {
+      suspended = false;
+      setMode("Activo", "pill-active");
+      setSubstatus("Despierta. Escuchando…");
     }
+    return;
+  }
 
-    if (lower.includes(WAKE_WORD)) return;
+  if (lower.includes(WAKE_WORD)) return;
 
-    const localCmd = localMapCommand(lower);
-    if (localCmd) {
-      safeText(commandEl, localCmd);
-      setSubstatus("Orden reconocida (local).");
-      return;
-    }
+  setSubstatus("Interpretando con IA…");
 
-    setSubstatus("Procesando con IA…");
-    const cmd = await classifyWithOpenAI(raw);
+  const cmd = await classifyWithOpenAI(raw);
 
-    safeText(commandEl, cmd);
-    setSubstatus(cmd === "Orden no reconocida"
-      ? "No se reconoció una orden válida."
-      : "Orden reconocida.");
-  };
+  safeText(commandEl, cmd);
+
+  setSubstatus(
+    cmd === "Orden no reconocida"
+      ? "No entendí la instrucción."
+      : "Orden ejecutada."
+  );
+};
+
 
   recognition.onend = () => safeStart();
   recognition.onerror = (e) => {
@@ -199,16 +157,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   setSubstatus('Sistema en reposo. Di "Macario" para activar.');
   safeStart();
 
-  /* =========================
-     OpenAI Clasificador
-  ========================= */
-  async function classifyWithOpenAI(text) {
+async function classifyWithOpenAI(text) {
 
-    if (!OPENAI_API_KEY) return "Orden no reconocida";
+  if (!OPENAI_API_KEY) return "Orden no reconocida";
 
-    const system = `
-Eres un clasificador de comandos.
-Responde ÚNICAMENTE con una de estas opciones exactas:
+  const system = `
+Eres un sistema de control de movimiento.
+
+Tu tarea es interpretar cualquier frase en español y clasificarla
+EXCLUSIVAMENTE en una de las siguientes opciones exactas:
+
 avanzar
 retroceder
 detener
@@ -219,42 +177,154 @@ vuelta izquierda
 360° derecha
 360° izquierda
 Orden no reconocida
+
+No expliques.
+No agregues texto adicional.
+No agregues puntuación.
+Responde únicamente con una opción exacta.
 `.trim();
 
-    try {
-      const r = await fetch(OPENAI_RESPONSES_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          input: [
-            { role: "system", content: system },
-            { role: "user", content: text }
-          ],
-          temperature: 0
-        })
-      });
+  try {
+    const r = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        input: [
+          { role: "system", content: system },
+          { role: "user", content: text }
+        ],
+        temperature: 0
+      })
+    });
 
-      if (!r.ok) return "Orden no reconocida";
+    if (!r.ok) return "Orden no reconocida";
 
-      const data = await r.json();
+    const data = await r.json();
 
-      const out =
-        data?.output_text ||
-        data?.output?.[0]?.content?.map(c => c?.text).filter(Boolean).join("") ||
-        "";
+    const output =
+      data?.output_text ||
+      data?.output?.[0]?.content?.map(c => c?.text).filter(Boolean).join("") ||
+      "";
 
-      const result = String(out).trim();
-      return ALLOWED_OUTPUTS.has(result)
-        ? result
-        : "Orden no reconocida";
+    const result = String(output).trim();
 
-    } catch {
-      return "Orden no reconocida";
-    }
+    return ALLOWED_OUTPUTS.has(result)
+      ? result
+      : "Orden no reconocida";
+
+  } catch {
+    return "Orden no reconocida";
   }
+}
+
+
+
+/* =========================
+   VOZ DE BIENVENIDA ESTABLE
+========================= */
+
+let bienvenidaHablada = false;
+const replayBtn = document.getElementById("replayWelcome");
+replayBtn?.classList.add("blinking");
+
+// 🔹 Función que habla
+function speakWelcome() {
+  replayBtn?.classList.remove("blinking");
+
+
+  if (!window.speechSynthesis) return;
+
+  speechSynthesis.cancel(); // limpia cola
+
+  const mensaje = `
+  Hola.
+  Soy Macaria, tu asistente de control por voz.
+  Estoy lista para ayudarte y acepto comandos como:
+  avanza, detente, retrocede,
+  gira a la derecha o a la izquierda,
+  o vuelta completa.
+  Para darme una orden, solo di mi nombre seguido de la orden. Por ejemplo: Macaria, avanza.
+  Te escucho.
+
+  `;
+
+  const speech = new SpeechSynthesisUtterance(mensaje);
+
+  speech.lang = "es-MX";
+  speech.rate = 1.5;
+  speech.pitch = 1.08;
+  speech.volume = 1;
+
+  function elegirVozFemenina() {
+    const voices = speechSynthesis.getVoices();
+
+    // Buscar voces femeninas por nombre común
+    const vozFemenina =
+      voices.find(v =>
+        v.lang.includes("es") &&
+        (
+          v.name.toLowerCase().includes("female") ||
+          v.name.toLowerCase().includes("mujer") ||
+          v.name.toLowerCase().includes("woman") ||
+          v.name.toLowerCase().includes("paulina") ||
+          v.name.toLowerCase().includes("monica") ||
+          v.name.toLowerCase().includes("helena") ||
+          v.name.toLowerCase().includes("sabina")
+        )
+      ) ||
+      voices.find(v => v.lang === "es-MX") ||
+      voices.find(v => v.lang.includes("es"));
+
+    if (vozFemenina) speech.voice = vozFemenina;
+
+    speechSynthesis.speak(speech);
+  }
+  if (speechSynthesis.getVoices().length === 0) {
+    speechSynthesis.onvoiceschanged = elegirVozFemenina;
+  } else {
+    elegirVozFemenina();
+  }
+
+  speech.onstart = () => {
+    document.querySelector(".wave")?.classList.add("active");
+  };
+
+  speech.onend = () => {
+    document.querySelector(".wave")?.classList.remove("active");
+    replayBtn?.classList.add("blinking");
+
+  };
+}
+
+// 🔹 Esperar 2 segundos y preparar activación
+setTimeout(() => {
+  document.addEventListener("click", iniciarBienvenida, { once: true });
+}, 2000);
+
+function iniciarBienvenida() {
+  if (!bienvenidaHablada) {
+    bienvenidaHablada = true;
+    speakWelcome();
+  }
+}
+
+// 🔹 Botón de recarga
+replayBtn?.addEventListener("click", () => {
+  speakWelcome();
+});
+
+
+ 
+
+
+
+
+
+
+
 
 });
