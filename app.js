@@ -160,7 +160,7 @@ async function getApiKeyFromBeeceptor() {
   };
 
   setMode("Suspendido", "pill-sleep");
-  setSubstatus('Sistema en reposo. Di "Macario" para activar.');
+  setSubstatus('Sistema en reposo. Di "Macaria" para activar.');
   safeStart();
 
 async function classifyWithOpenAI(text) {
