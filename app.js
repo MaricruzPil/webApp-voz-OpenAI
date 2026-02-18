@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-  //const MOCKAPI_URL = "https://698def5eaded595c25309065.mockapi.io/api/v1/apyKey";
-  const BEECEPTOR_URL = "https://apikey.free.beeceptor.com/apikey";
+  const MOCKAPI_URL = "https://69950d45b081bc23e9c1e146.mockapi.io/v1/user/3";
 
   let OPENAI_API_KEY = null; // 🔥 ahora es dinámica
 
@@ -47,43 +46,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\s+/g, " ");
   }
 
-    /* =====================================================
-   🔥 OBTENER API KEY DESDE BEECEPTOR
-===================================================== */
-async function getApiKeyFromBeeceptor() {
+ /* =====================================================
+     🔥 OBTENER API KEY DESDE MOCKAPI
+  ===================================================== */
+async function getApiKeyFromMockAPI() {
   try {
-    const response = await fetch(BEECEPTOR_URL);
+    const response = await fetch(MOCKAPI_URL);
 
     if (!response.ok) {
-      throw new Error("No se pudo obtener API Key desde Beeceptor");
+      throw new Error("No se pudo obtener API Key desde MockAPI");
     }
 
     const data = await response.json();
 
-    // Tomar el primer registro del arreglo
-    if (Array.isArray(data) && data.length > 0 && data[0].apikey) {
-      return data[0].apikey;
+    if (data.apiKey) {
+      return data.apiKey;
     }
 
-    throw new Error("Formato inválido en Beeceptor");
+    throw new Error("Formato inválido en MockAPI");
 
   } catch (error) {
     console.error("Error obteniendo API Key:", error);
     setMode("Error API Key", "pill-error");
-    setSubstatus("No se pudo cargar la API Key desde Beeceptor.");
+    setSubstatus("No se pudo cargar la API Key desde MockAPI.");
     return null;
   }
 }
 
-
   // 🔥 Cargar API Key al iniciar
-
-  OPENAI_API_KEY = await getApiKeyFromBeeceptor();
-
-
-
-
-
+  OPENAI_API_KEY = await getApiKeyFromMockAPI();
 
   /* =========================
      SPEECH RECOGNITION
@@ -230,8 +221,6 @@ Responde únicamente con una opción exacta.
   }
 }
 
-
-
 /* =========================
    VOZ DE BIENVENIDA ESTABLE
 ========================= */
@@ -305,7 +294,6 @@ Te escucho.
   speakWithOpenAI(mensaje);
 }
 
-
 // 🔹 Esperar 2 segundos y preparar activación
 setTimeout(() => {
   document.addEventListener("click", iniciarBienvenida, { once: true });
@@ -323,6 +311,5 @@ replayBtn?.addEventListener("click", (e) => {
   e.stopPropagation(); // 🔥 evita que el click suba al document
   speakWelcome();
 });
-
 
 });
