@@ -248,6 +248,7 @@ replayBtn?.classList.add("blinking");
 async function speakWithOpenAI(text) {
   if (!OPENAI_API_KEY) return;
 
+ 
   try {
     const response = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
@@ -318,8 +319,10 @@ function iniciarBienvenida() {
 }
 
 // 🔹 Botón de recarga
-replayBtn?.addEventListener("click", () => {
+replayBtn?.addEventListener("click", (e) => {
+  e.stopPropagation(); // 🔥 evita que el click suba al document
   speakWelcome();
 });
+
 
 });
