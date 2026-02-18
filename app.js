@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-  const MOCKAPI_URL = "https://698def5eaded595c25309065.mockapi.io/api/v1/apyKey";
+  //const MOCKAPI_URL = "https://698def5eaded595c25309065.mockapi.io/api/v1/apyKey";
+  const BEECEPTOR_URL = "https://apikey.free.beeceptor.com/apikey";
 
   let OPENAI_API_KEY = null; // 🔥 ahora es dinámica
 
@@ -46,33 +47,38 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\s+/g, " ");
   }
 
-  /* =====================================================
-     🔥 OBTENER API KEY DESDE MOCKAPI
-  ===================================================== */
-  async function getApiKeyFromMockAPI() {
-    try {
-      const response = await fetch(MOCKAPI_URL);
-      if (!response.ok) throw new Error("No se pudo obtener API Key");
+    /* =====================================================
+   🔥 OBTENER API KEY DESDE BEECEPTOR
+===================================================== */
+async function getApiKeyFromBeeceptor() {
+  try {
+    const response = await fetch(BEECEPTOR_URL);
 
-      const data = await response.json();
-
-      // Tomar el primer registro
-      if (Array.isArray(data) && data.length > 0 && data[0].apikey) {
-        return data[0].apikey;
-      }
-
-      throw new Error("Formato inválido en MockAPI");
-    } catch (error) {
-      console.error("Error obteniendo API Key:", error);
-      setMode("Error API Key", "pill-error");
-      setSubstatus("No se pudo cargar la API Key desde MockAPI.");
-      return null;
+    if (!response.ok) {
+      throw new Error("No se pudo obtener API Key desde Beeceptor");
     }
+
+    const data = await response.json();
+
+    // Tomar el primer registro del arreglo
+    if (Array.isArray(data) && data.length > 0 && data[0].apikey) {
+      return data[0].apikey;
+    }
+
+    throw new Error("Formato inválido en Beeceptor");
+
+  } catch (error) {
+    console.error("Error obteniendo API Key:", error);
+    setMode("Error API Key", "pill-error");
+    setSubstatus("No se pudo cargar la API Key desde Beeceptor.");
+    return null;
   }
+}
+
 
   // 🔥 Cargar API Key al iniciar
-  OPENAI_API_KEY = await getApiKeyFromMockAPI();
 
+  OPENAI_API_KEY = await getApiKeyFromBeeceptor();
 
 
 
@@ -162,9 +168,12 @@ async function classifyWithOpenAI(text) {
   if (!OPENAI_API_KEY) return "Orden no reconocida";
 
   const system = `
-Eres un sistema de control de movimiento.
+Eres un sistema inteligente de control de movimiento.
 
-Tu tarea es interpretar cualquier frase en español y clasificarla
+Tu tarea es interpretar cualquier frase en español,
+aunque incluya cortesía, muletillas, errores, rodeos o lenguaje informal.
+
+Debes analizar la intención real de movimiento y clasificarla
 EXCLUSIVAMENTE en una de las siguientes opciones exactas:
 
 avanzar
@@ -232,73 +241,69 @@ const replayBtn = document.getElementById("replayWelcome");
 replayBtn?.classList.add("blinking");
 
 // 🔹 Función que habla
+/* =========================
+   🔊 OPENAI VOZ SHIMMER
+========================= */
+
+async function speakWithOpenAI(text) {
+  if (!OPENAI_API_KEY) return;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini-tts",
+        voice: "shimmer",
+        input: text
+      })
+    });
+
+    if (!response.ok) {
+      console.error("Error TTS:", await response.text());
+      return;
+    }
+
+    const blob = await response.blob();
+    const audio = new Audio(URL.createObjectURL(blob));
+
+    audio.onplay = () => {
+      document.querySelector(".wave")?.classList.add("active");
+    };
+
+    audio.onended = () => {
+      document.querySelector(".wave")?.classList.remove("active");
+      replayBtn?.classList.add("blinking");
+    };
+
+    audio.play();
+
+  } catch (error) {
+    console.error("Error reproduciendo voz:", error);
+  }
+}
+
 function speakWelcome() {
   replayBtn?.classList.remove("blinking");
 
-
-  if (!window.speechSynthesis) return;
-
-  speechSynthesis.cancel(); // limpia cola
-
   const mensaje = `
-  Hola.
-  Soy Macaria, tu asistente de control por voz.
-  Estoy lista para ayudarte y acepto comandos como:
-  avanza, detente, retrocede,
-  gira a la derecha o a la izquierda,
-  o vuelta completa.
-  Para darme una orden, solo di mi nombre seguido de la orden. Por ejemplo: Macaria, avanza.
-  Te escucho.
+Hola.
+Soy Macaria, tu asistente de control por voz.
+Estoy lista para ayudarte y acepto comandos como:
+avanza, detente, retrocede,
+gira a la derecha o a la izquierda,
+o vuelta completa.
+Para darme una orden, solo di mi nombre seguido de la orden.
+Por ejemplo: Macaria, ve hacia adelante.
+Te escucho.
+`;
 
-  `;
-
-  const speech = new SpeechSynthesisUtterance(mensaje);
-
-  speech.lang = "es-MX";
-  speech.rate = 1.5;
-  speech.pitch = 1.08;
-  speech.volume = 1;
-
-  function elegirVozFemenina() {
-    const voices = speechSynthesis.getVoices();
-
-    // Buscar voces femeninas por nombre común
-    const vozFemenina =
-      voices.find(v =>
-        v.lang.includes("es") &&
-        (
-          v.name.toLowerCase().includes("female") ||
-          v.name.toLowerCase().includes("mujer") ||
-          v.name.toLowerCase().includes("woman") ||
-          v.name.toLowerCase().includes("paulina") ||
-          v.name.toLowerCase().includes("monica") ||
-          v.name.toLowerCase().includes("helena") ||
-          v.name.toLowerCase().includes("sabina")
-        )
-      ) ||
-      voices.find(v => v.lang === "es-MX") ||
-      voices.find(v => v.lang.includes("es"));
-
-    if (vozFemenina) speech.voice = vozFemenina;
-
-    speechSynthesis.speak(speech);
-  }
-  if (speechSynthesis.getVoices().length === 0) {
-    speechSynthesis.onvoiceschanged = elegirVozFemenina;
-  } else {
-    elegirVozFemenina();
-  }
-
-  speech.onstart = () => {
-    document.querySelector(".wave")?.classList.add("active");
-  };
-
-  speech.onend = () => {
-    document.querySelector(".wave")?.classList.remove("active");
-    replayBtn?.classList.add("blinking");
-
-  };
+  speakWithOpenAI(mensaje);
 }
+
 
 // 🔹 Esperar 2 segundos y preparar activación
 setTimeout(() => {
@@ -316,15 +321,5 @@ function iniciarBienvenida() {
 replayBtn?.addEventListener("click", () => {
   speakWelcome();
 });
-
-
- 
-
-
-
-
-
-
-
 
 });

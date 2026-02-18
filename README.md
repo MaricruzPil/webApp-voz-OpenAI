@@ -1,4 +1,4 @@
-# 🎙️ Macario Voice Controller
+# 🎙️ Macaria Voice Controller
 
 Aplicación web que utiliza reconocimiento de voz en español (es-MX) para interpretar comandos y clasificarlos como instrucciones de movimiento mediante procesamiento local y apoyo de OpenAI.
 
@@ -13,7 +13,7 @@ El sistema funciona con una palabra activadora (wake word) y muestra en pantalla
 ## 🚀 Características
 
 - ✅ Reconocimiento de voz en tiempo real (Web Speech API)
-- ✅ Wake word configurable (actualmente: **"Macario"**)
+- ✅ Wake word configurable (actualmente: **"Macaria"**)
 - ✅ Clasificación local rápida mediante expresiones regulares
 - ✅ Clasificación inteligente con OpenAI como respaldo
 - ✅ Obtención dinámica de API Key desde MockAPI
@@ -39,8 +39,8 @@ El sistema puede interpretar variaciones y sinónimos de las siguientes instrucc
 
 Ejemplos válidos:
 
-- "Macario, avanza"
-- "Macario, puedes ir hacia enfrente"
-- "Macario, no te muevas"
-- "Macario, gira 90 grados a la derecha"
+- "Macaria, avanza"
+- "Macaria, puedes ir hacia enfrente"
+- "Macaria, no te muevas"
+- "Macaria, gira 90 grados a la derecha"
 
