@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const MOCKAPI_URL = "https://69950d45b081bc23e9c1e146.mockapi.io/v1/user/3";
   let OPENAI_API_KEY = "";      // se llena al cargar MockAPI
-  let apiKeyPromise = null;     // evita múltiples solicitudes
+  
   
   const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
@@ -56,36 +56,34 @@ document.addEventListener("DOMContentLoaded", () => {
      Espera: [{ apikey: "...", id: "1" }, ...]
   ===================================================== */
   async function loadApiKeyFromMockAPI() {
-    if (apiKeyPromise) return apiKeyPromise;
+  if (OPENAI_API_KEY) return OPENAI_API_KEY;
 
-    apiKeyPromise = (async () => {
-      try {
-        setSubstatus("Cargando credenciales (MockAPI)…");
+  try {
+    setSubstatus("Cargando credenciales (MockAPI)…");
 
-        const r = await fetch(MOCKAPI_URL, { method: "GET" });
-        if (!r.ok) throw new Error(`MockAPI HTTP ${r.status}`);
+    const r = await fetch(MOCKAPI_URL, { method: "GET" });
+    if (!r.ok) throw new Error(`MockAPI HTTP ${r.status}`);
 
-        const data = await r.json();
-        const first = Array.isArray(data) ? data[0] : data;
+    const data = await r.json();
+    const first = Array.isArray(data) ? data[0] : data;
 
-        const key = first?.apikey;
-        if (!key || typeof key !== "string") {
-          throw new Error("No se encontró 'apikey' en el primer registro.");
-        }
+    const key = first?.apikey;
+    if (!key || typeof key !== "string") {
+      throw new Error("No se encontró 'apikey'.");
+    }
 
-        OPENAI_API_KEY = key.trim();
-        setSubstatus("Listo. Escuchando órdenes…");
-        return OPENAI_API_KEY;
-      } catch (err) {
-        setMode("Error", "pill-error");
-        setSubstatus(`No pude cargar API Key desde MockAPI: ${err.message}`);
-        OPENAI_API_KEY = "";
-        return "";
-      }
-    })();
+    OPENAI_API_KEY = key.trim();
+    setSubstatus("Listo. Escuchando órdenes…");
+    return OPENAI_API_KEY;
 
-    return apiKeyPromise;
+  } catch (err) {
+    console.error("MockAPI error:", err);
+    OPENAI_API_KEY = "";
+    return "";
   }
+}
+
+
 
   // Dispara la carga desde el inicio (sin detener el resto)
   //loadApiKeyFromMockAPI();
