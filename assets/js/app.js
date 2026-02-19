@@ -88,8 +88,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Dispara la carga desde el inicio (sin detener el resto)
-  loadApiKeyFromMockAPI();
-
+  //loadApiKeyFromMockAPI();
+  (async () => {
+  await loadApiKeyFromMockAPI();
+  safeStart();
+  })();
   /* =========================
      SPEECH RECOGNITION
   ========================= */
@@ -119,13 +122,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }, IDLE_MS);
   }
 
-  function safeStart() {
+  /*function safeStart() {
     try { recognition.start(); } catch (_) {}
-  }
+  }*/
 
   recognition.onstart = () => {
     setMode(suspended ? "Suspendido" : "Activo", suspended ? "pill-sleep" : "pill-active");
-    setSubstatus(suspended ? 'Esperando "Alpha"...' : "Escuchando órdenes…");
+    setSubstatus(suspended ? 'Esperando "Macaria"...' : "Escuchando órdenes…");
     resetIdleTimer();
   };
 
@@ -178,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setMode("Activo", "pill-active");
   setSubstatus("Pide permisos del micrófono. Escuchando órdenes…");
-  safeStart();
+  //safeStart();
 
   /* =========================
      OpenAI: Clasificador
