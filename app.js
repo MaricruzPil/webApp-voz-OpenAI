@@ -1,12 +1,16 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+document.addEventListener("DOMContentLoaded", () => {
+
   const MOCKAPI_URL = "https://69950d45b081bc23e9c1e146.mockapi.io/v1/user/3";
+  let OPENAI_API_KEY = "";      // se llena al cargar MockAPI
+  let apiKeyPromise = null;     // evita múltiples solicitudes
+  
+  const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
-  let OPENAI_API_KEY = null; // 🔥 ahora es dinámica
-
-  const WAKE_WORD = "macaria";
+  // Wake Word
+  const WAKE_WORD = "macaria";     // lo que detecta en texto (speech-to-text)
   const IDLE_MS = 10000;
 
+  // ÚNICAS salidas permitidas (validación)
   const ALLOWED_OUTPUTS = new Set([
     "avanzar",
     "retroceder",
@@ -20,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "Orden no reconocida",
   ]);
 
+  // UI (null-safe)
   const modePill = document.getElementById("modePill");
   const transcriptEl = document.getElementById("transcript");
   const commandEl = document.getElementById("command");
@@ -46,35 +51,44 @@ document.addEventListener("DOMContentLoaded", async () => {
       .replace(/\s+/g, " ");
   }
 
- /* =====================================================
-     🔥 OBTENER API KEY DESDE MOCKAPI
+  /* =====================================================
+     ✅ CARGA API KEY DESDE MOCKAPI (1er registro)
+     Espera: [{ apikey: "...", id: "1" }, ...]
   ===================================================== */
-async function getApiKeyFromMockAPI() {
-  try {
-    const response = await fetch(MOCKAPI_URL);
+  async function loadApiKeyFromMockAPI() {
+    if (apiKeyPromise) return apiKeyPromise;
 
-    if (!response.ok) {
-      throw new Error("No se pudo obtener API Key desde MockAPI");
-    }
+    apiKeyPromise = (async () => {
+      try {
+        setSubstatus("Cargando credenciales (MockAPI)…");
 
-    const data = await response.json();
+        const r = await fetch(MOCKAPI_URL, { method: "GET" });
+        if (!r.ok) throw new Error(`MockAPI HTTP ${r.status}`);
 
-    if (data.apiKey) {
-      return data.apiKey;
-    }
+        const data = await r.json();
+        const first = Array.isArray(data) ? data[0] : data;
 
-    throw new Error("Formato inválido en MockAPI");
+        const key = first?.apikey;
+        if (!key || typeof key !== "string") {
+          throw new Error("No se encontró 'apikey' en el primer registro.");
+        }
 
-  } catch (error) {
-    console.error("Error obteniendo API Key:", error);
-    setMode("Error API Key", "pill-error");
-    setSubstatus("No se pudo cargar la API Key desde MockAPI.");
-    return null;
+        OPENAI_API_KEY = key.trim();
+        setSubstatus("Listo. Escuchando órdenes…");
+        return OPENAI_API_KEY;
+      } catch (err) {
+        setMode("Error", "pill-error");
+        setSubstatus(`No pude cargar API Key desde MockAPI: ${err.message}`);
+        OPENAI_API_KEY = "";
+        return "";
+      }
+    })();
+
+    return apiKeyPromise;
   }
-}
 
-  // 🔥 Cargar API Key al iniciar
-  OPENAI_API_KEY = await getApiKeyFromMockAPI();
+  // Dispara la carga desde el inicio (sin detener el resto)
+  loadApiKeyFromMockAPI();
 
   /* =========================
      SPEECH RECOGNITION
@@ -83,7 +97,7 @@ async function getApiKeyFromMockAPI() {
 
   if (!SpeechRecognition) {
     setMode("No compatible", "pill-error");
-    setSubstatus("Tu navegador no soporta SpeechRecognition.");
+    setSubstatus("Tu navegador no soporta SpeechRecognition. Prueba en Chrome/Edge.");
     return;
   }
 
@@ -92,7 +106,7 @@ async function getApiKeyFromMockAPI() {
   recognition.continuous = true;
   recognition.interimResults = false;
 
-  let suspended = true;
+  let suspended = false;
   let idleTimer = null;
 
   function resetIdleTimer() {
@@ -100,7 +114,7 @@ async function getApiKeyFromMockAPI() {
     idleTimer = setTimeout(() => {
       suspended = true;
       setMode("Suspendido", "pill-sleep");
-      setSubstatus('Suspendido por inactividad. Di "Macario" para despertar.');
+      setSubstatus('Suspendido por inactividad. Di "Alpha" para despertar.');
       safeText(commandEl, "—");
     }, IDLE_MS);
   }
@@ -109,64 +123,80 @@ async function getApiKeyFromMockAPI() {
     try { recognition.start(); } catch (_) {}
   }
 
-  recognition.onresult = async (event) => {
-  const last = event.results[event.results.length - 1];
-  const raw = last?.[0]?.transcript?.trim() || "";
-  if (!raw) return;
-
-  safeText(transcriptEl, raw);
-  resetIdleTimer();
-
-  const lower = normalize(raw);
-
-  if (suspended) {
-    if (lower.includes(WAKE_WORD)) {
-      suspended = false;
-      setMode("Activo", "pill-active");
-      setSubstatus("Despierta. Escuchando…");
-    }
-    return;
-  }
-
-  if (lower.includes(WAKE_WORD)) return;
-
-  setSubstatus("Interpretando con IA…");
-
-  const cmd = await classifyWithOpenAI(raw);
-
-  safeText(commandEl, cmd);
-
-  setSubstatus(
-    cmd === "Orden no reconocida"
-      ? "No entendí la instrucción."
-      : "Orden ejecutada."
-  );
-};
-
-
-  recognition.onend = () => safeStart();
-  recognition.onerror = (e) => {
-    setMode("Error", "pill-error");
-    setSubstatus(`Error STT: ${e.error}`);
+  recognition.onstart = () => {
+    setMode(suspended ? "Suspendido" : "Activo", suspended ? "pill-sleep" : "pill-active");
+    setSubstatus(suspended ? 'Esperando "Alpha"...' : "Escuchando órdenes…");
+    resetIdleTimer();
   };
 
-  setMode("Suspendido", "pill-sleep");
-  setSubstatus('Sistema en reposo. Di "Macaria" para activar.');
+  recognition.onerror = (e) => {
+    setMode("Error", "pill-error");
+    setSubstatus(`Error STT: ${e.error || "desconocido"}`);
+  };
+
+  recognition.onend = () => {
+    safeStart();
+  };
+
+  recognition.onresult = async (event) => {
+    const last = event.results[event.results.length - 1];
+    const raw = last?.[0]?.transcript?.trim() || "";
+    if (!raw) return;
+
+    safeText(transcriptEl, raw);
+    resetIdleTimer();
+
+    const lower = normalize(raw);
+
+    // Suspendido: solo wake word
+    if (suspended) {
+      if (lower.includes(WAKE_WORD)) {
+        suspended = false;
+        setMode("Activo", "pill-active");
+        setSubstatus("Despierto. Escuchando órdenes…");
+        resetIdleTimer();
+      } else {
+        setSubstatus('Suspendido. Di "Alpha" para despertar.');
+      }
+      return;
+    }
+
+    // Activo: si dice wake word, ignora (solo mantiene activo)
+    if (lower.includes(WAKE_WORD)) {
+      setSubstatus("Wake word detectada (activo).");
+      return;
+    }
+
+    // ✅ IA interpreta TODO (sin listas de sinónimos hardcodeadas)
+    setSubstatus("Procesando con IA…");
+    const key = OPENAI_API_KEY || (await loadApiKeyFromMockAPI());
+    const cmd = await classifyWithOpenAI(raw, key);
+
+    safeText(commandEl, cmd);
+    setSubstatus(cmd === "Orden no reconocida" ? "No se reconoció una orden válida." : "Orden reconocida.");
+  };
+
+  setMode("Activo", "pill-active");
+  setSubstatus("Pide permisos del micrófono. Escuchando órdenes…");
   safeStart();
 
-async function classifyWithOpenAI(text) {
+  /* =========================
+     OpenAI: Clasificador
+  ========================= */
+  async function classifyWithOpenAI(text, apiKey) {
+    if (!apiKey) {
+      setMode("Sin API Key", "pill-error");
+      setSubstatus("No hay API Key disponible (MockAPI falló o no respondió).");
+      return "Orden no reconocida";
+    }
 
-  if (!OPENAI_API_KEY) return "Orden no reconocida";
+    // 👇 Importante: NO listamos sinónimos. Pedimos comprensión semántica total,
+    // incluyendo negación, comparación, ironía simple, “lo contrario de…”, etc.
+    const system = `
+Eres un intérprete de intención para un sistema de control por voz.
+Tu misión es leer (o inferir desde una transcripción con errores) la intención del usuario y mapearla al comando de control MÁS ADECUADO.
 
-  const system = `
-Eres un sistema inteligente de control de movimiento.
-
-Tu tarea es interpretar cualquier frase en español,
-aunque incluya cortesía, muletillas, errores, rodeos o lenguaje informal.
-
-Debes analizar la intención real de movimiento y clasificarla
-EXCLUSIVAMENTE en una de las siguientes opciones exactas:
-
+Debes responder ÚNICAMENTE con EXACTAMENTE UNA de estas opciones (una sola línea y nada más):
 avanzar
 retroceder
 detener
@@ -178,138 +208,161 @@ vuelta izquierda
 360° izquierda
 Orden no reconocida
 
-No expliques.
-No agregues texto adicional.
-No agregues puntuación.
-Responde únicamente con una opción exacta.
+Criterio general:
+- Comprende el significado completo del mensaje, aunque sea una frase larga o rara.
+- Reconoce sinónimos, expresiones equivalentes, modismos, y palabras parecidas por errores del micrófono.
+- Maneja negaciones y “lo contrario de…”.
+  Ejemplo: “haz lo contrario de ir hacia atrás” ⇒ avanzar.
+- Si el usuario pide un giro con ángulo, elige 90° o 360° según corresponda.
+- Si pide girar sin ángulo específico, usa “vuelta derecha” o “vuelta izquierda”.
+- Si pide parar, pausar, frenar o inmovilizar, usa “detener”.
+- Si el mensaje contiene varias acciones, elige la acción PRINCIPAL o la primera orden clara.
+- Si no hay intención clara o no encaja con el set, responde “Orden no reconocida”.
+
+Prohibido:
+- No expliques nada.
+- No uses comillas.
+- No agregues texto extra.
 `.trim();
 
-  try {
-    const r = await fetch(OPENAI_RESPONSES_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        input: [
-          { role: "system", content: system },
-          { role: "user", content: text }
-        ],
-        temperature: 0
-      })
-    });
+    try {
+      const r = await fetch(OPENAI_RESPONSES_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          input: [
+            { role: "system", content: system },
+            { role: "user", content: text }
+          ],
+          temperature: 0
+        })
+      });
 
-    if (!r.ok) return "Orden no reconocida";
+      if (!r.ok) return "Orden no reconocida";
 
-    const data = await r.json();
+      const data = await r.json();
+      const out =
+        data?.output_text ||
+        data?.output?.[0]?.content?.map(c => c?.text).filter(Boolean).join("") ||
+        "";
 
-    const output =
-      data?.output_text ||
-      data?.output?.[0]?.content?.map(c => c?.text).filter(Boolean).join("") ||
-      "";
+      const result = String(out).trim();
 
-    const result = String(output).trim();
-
-    return ALLOWED_OUTPUTS.has(result)
-      ? result
-      : "Orden no reconocida";
-
-  } catch {
-    return "Orden no reconocida";
-  }
-}
-
-/* =========================
-   VOZ DE BIENVENIDA ESTABLE
-========================= */
-
-let bienvenidaHablada = false;
-const replayBtn = document.getElementById("replayWelcome");
-replayBtn?.classList.add("blinking");
-
-// 🔹 Función que habla
-/* =========================
-   🔊 OPENAI VOZ SHIMMER
-========================= */
-
-async function speakWithOpenAI(text) {
-  if (!OPENAI_API_KEY) return;
-
- 
-  try {
-    const response = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini-tts",
-        voice: "shimmer",
-        input: text
-      })
-    });
-
-    if (!response.ok) {
-      console.error("Error TTS:", await response.text());
-      return;
+      // Validación dura: si no coincide EXACTO, no se acepta
+      return ALLOWED_OUTPUTS.has(result) ? result : "Orden no reconocida";
+    } catch {
+      return "Orden no reconocida";
     }
+  }
 
-    const blob = await response.blob();
-    const audio = new Audio(URL.createObjectURL(blob));
+/* =====================================================
+   🔊 VOZ EXPLICATIVA DEL SISTEMA (ALFA) — SUPER ROBUSTA
+===================================================== */
+const infoBtn = document.getElementById("infoVoiceBtn");
 
-    audio.onplay = () => {
-      document.querySelector(".wave")?.classList.add("active");
+function getBestSpanishVoice() {
+  const voices = window.speechSynthesis.getVoices() || [];
+  const es = voices.filter(v => (v.lang || "").toLowerCase().startsWith("es"));
+
+  const score = (v) => {
+    const n = (v.name || "").toLowerCase();
+    let s = 0;
+    if (n.includes("natural")) s += 6;
+    if (n.includes("google")) s += 5;
+    if (n.includes("microsoft")) s += 4;
+    if (n.includes("mex") || n.includes("méx")) s += 3;
+    if (n.includes("spanish") || n.includes("español")) s += 2;
+    return s;
+  };
+
+  es.sort((a, b) => score(b) - score(a));
+  return es[0] || null;
+}
+
+function waitForVoices(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+
+    // Si ya hay voces, listo
+    const existing = synth.getVoices();
+    if (existing && existing.length) return resolve(existing);
+
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      synth.onvoiceschanged = null;
+      resolve(synth.getVoices() || []);
+    }, timeoutMs);
+
+    synth.onvoiceschanged = () => {
+      if (done) return;
+      const v = synth.getVoices();
+      if (v && v.length) {
+        done = true;
+        clearTimeout(timer);
+        synth.onvoiceschanged = null;
+        resolve(v);
+      }
     };
 
-    audio.onended = () => {
-      document.querySelector(".wave")?.classList.remove("active");
-      replayBtn?.classList.add("blinking");
-    };
-
-    audio.play();
-
-  } catch (error) {
-    console.error("Error reproduciendo voz:", error);
-  }
+    // “pica” al navegador para que cargue voces
+    synth.getVoices();
+  });
 }
 
-function speakWelcome() {
-  replayBtn?.classList.remove("blinking");
+async function speakIntro() {
+  const synth = window.speechSynthesis;
 
-  const mensaje = `
-Hola.
-Soy Macaria, tu asistente de control por voz.
-Estoy lista para ayudarte y acepto comandos como:
-avanza, detente, retrocede,
-gira a la derecha o a la izquierda,
-o vuelta completa.
-Para darme una orden, solo di mi nombre seguido de la orden.
-Por ejemplo: Macaria, ve hacia adelante.
-Te escucho.
-`;
+  // Esperar voces (en GitHub Pages a veces llegan tarde)
+  await waitForVoices();
 
-  speakWithOpenAI(mensaje);
+  const texto = [
+    "Hola. Mi nombre es Alfa.",
+    "Soy un programa de control por voz impulsado por inteligencia artificial.",
+    "Escucho tus instrucciones desde el micrófono y las interpreto para convertirlas en acciones.",
+    "Si no detecto voz durante unos segundos, entro en modo suspendido.",
+    "Para despertarme, solo di: Alfa.",
+    "En la parte de abajo están las posibles instrucciones.",
+    "Cuando quieras, estoy listo para recibir tus órdenes."
+  ].join("  ");
+
+  const msg = new SpeechSynthesisUtterance(texto);
+  msg.lang = "es-MX";
+  msg.rate = 0.92;
+  msg.pitch = 1.05; // bonito y natural
+  msg.volume = 1;
+
+  const v = getBestSpanishVoice();
+  if (v) msg.voice = v;
+
+  // Feedback opcional en UI
+  // infoBtn?.classList.add("speaking");
+
+  // En algunos navegadores ayuda cancelar y hablar con micro delay
+  synth.cancel();
+  setTimeout(() => synth.speak(msg), 80);
+
+  msg.onend = () => {
+    // infoBtn?.classList.remove("speaking");
+  };
+  msg.onerror = () => {
+    // infoBtn?.classList.remove("speaking");
+  };
 }
 
-// 🔹 Esperar 2 segundos y preparar activación
-setTimeout(() => {
-  document.addEventListener("click", iniciarBienvenida, { once: true });
-}, 2000);
-
-function iniciarBienvenida() {
-  if (!bienvenidaHablada) {
-    bienvenidaHablada = true;
-    speakWelcome();
-  }
-}
-
-// 🔹 Botón de recarga
-replayBtn?.addEventListener("click", (e) => {
-  e.stopPropagation(); // 🔥 evita que el click suba al document
-  speakWelcome();
-});
+if (infoBtn && "speechSynthesis" in window) {
+  infoBtn.addEventListener("click", async () => {
+    try {
+      await speakIntro();
+    } catch (e) {
+      console.warn("TTS error:", e);
+    }
+  });
+} 
 
 });
