@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = await r.json();
     const first = Array.isArray(data) ? data[0] : data;
 
-    const key = first?.apikey;
+    const key = first?.apiKey;
     if (!key || typeof key !== "string") {
       throw new Error("No se encontró 'apikey'.");
     }
