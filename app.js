@@ -90,7 +90,7 @@ async function getApiKeyFromMockAPI() {
   const recognition = new SpeechRecognition();
   recognition.lang = "es-MX";
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
 
   let suspended = true;
   let idleTimer = null;
@@ -106,42 +106,54 @@ async function getApiKeyFromMockAPI() {
   }
 
   function safeStart() {
-    try { recognition.start(); } catch (_) {}
-  }
+  try {
+    recognition.stop();
+  } catch (_) {}
+  try {
+    recognition.start();
+  } catch (_) {}
+}
 
-  recognition.onresult = async (event) => {
-  const last = event.results[event.results.length - 1];
-  const raw = last?.[0]?.transcript?.trim() || "";
-  if (!raw) return;
 
-  safeText(transcriptEl, raw);
-  resetIdleTimer();
+recognition.onresult = async (event) => {
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    const result = event.results[i];
+    const raw = result[0].transcript.trim();
+    const lower = normalize(raw);
 
-  const lower = normalize(raw);
+    if (!raw) continue;
 
-  if (suspended) {
-    if (lower.includes(WAKE_WORD)) {
-      suspended = false;
-      setMode("Activo", "pill-active");
-      setSubstatus("Despierta. Escuchando…");
+    safeText(transcriptEl, raw);
+
+    if (suspended) {
+      if (lower.includes(WAKE_WORD)) {
+        suspended = false;
+        setMode("Activo", "pill-active");
+        setSubstatus("Despierta. Escuchando…");
+      }
+      return;
     }
-    return;
+
+    if (!result.isFinal) return; // 🔥 solo ejecuta comando cuando sea final
+
+    resetIdleTimer();
+
+    if (lower.includes(WAKE_WORD)) return;
+
+    setSubstatus("Interpretando con IA…");
+
+    const cmd = await classifyWithOpenAI(raw);
+
+    safeText(commandEl, cmd);
+
+    setSubstatus(
+      cmd === "Orden no reconocida"
+        ? "No entendí la instrucción."
+        : "Orden ejecutada."
+    );
   }
-
-  if (lower.includes(WAKE_WORD)) return;
-
-  setSubstatus("Interpretando con IA…");
-
-  const cmd = await classifyWithOpenAI(raw);
-
-  safeText(commandEl, cmd);
-
-  setSubstatus(
-    cmd === "Orden no reconocida"
-      ? "No entendí la instrucción."
-      : "Orden ejecutada."
-  );
 };
+
 
 
   recognition.onend = () => safeStart();
