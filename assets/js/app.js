@@ -122,9 +122,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }, IDLE_MS);
   }
 
-  /*function safeStart() {
+  function safeStart() {
     try { recognition.start(); } catch (_) {}
-  }*/
+  }
 
   recognition.onstart = () => {
     setMode(suspended ? "Suspendido" : "Activo", suspended ? "pill-sleep" : "pill-active");
