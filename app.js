@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Wake Word
   const WAKE_WORD = "macaria";     // lo que detecta en texto (speech-to-text)
-  const IDLE_MS = 10000;
+  const IDLE_MS = 20000;
 
   // ÚNICAS salidas permitidas (validación)
   const ALLOWED_OUTPUTS = new Set([
