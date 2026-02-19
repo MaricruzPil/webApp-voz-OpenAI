@@ -106,14 +106,8 @@ async function getApiKeyFromMockAPI() {
   }
 
   function safeStart() {
-  try {
-    recognition.stop();
-  } catch (_) {}
-  try {
-    recognition.start();
-  } catch (_) {}
-}
-
+    try { recognition.start(); } catch (_) {}
+  }
 
 recognition.onresult = async (event) => {
   for (let i = event.resultIndex; i < event.results.length; i++) {
