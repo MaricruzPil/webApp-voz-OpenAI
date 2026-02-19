@@ -65,11 +65,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!r.ok) throw new Error(`MockAPI HTTP ${r.status}`);
 
     const data = await r.json();
-    const first = Array.isArray(data) ? data[0] : data;
 
-    const key = first?.apiKey;
+    const key = data?.apiKey;
     if (!key || typeof key !== "string") {
-      throw new Error("No se encontró 'apikey'.");
+      throw new Error("No se encontró 'apiKey'.");
     }
 
     OPENAI_API_KEY = key.trim();
