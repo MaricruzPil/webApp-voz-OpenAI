@@ -52,8 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* =====================================================
-     ✅ CARGA API KEY DESDE MOCKAPI (1er registro)
-     Espera: [{ apikey: "...", id: "1" }, ...]
+     ✅ CARGA API KEY DESDE MOCKAPI 
   ===================================================== */
   async function loadApiKeyFromMockAPI() {
   if (OPENAI_API_KEY) return OPENAI_API_KEY;
@@ -81,8 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 }
-
-
 
   // Dispara la carga desde el inicio (sin detener el resto)
   //loadApiKeyFromMockAPI();
@@ -114,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     idleTimer = setTimeout(() => {
       suspended = true;
       setMode("Suspendido", "pill-sleep");
-      setSubstatus('Suspendido por inactividad. Di "Alpha" para despertar.');
+      setSubstatus('Suspendido por inactividad. Di "Macaria" para despertar.');
       safeText(commandEl, "—");
     }, IDLE_MS);
   }
@@ -153,10 +150,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (lower.includes(WAKE_WORD)) {
         suspended = false;
         setMode("Activo", "pill-active");
-        setSubstatus("Despierto. Escuchando órdenes…");
+        setSubstatus("Despierta. Escuchando órdenes…");
         resetIdleTimer();
       } else {
-        setSubstatus('Suspendido. Di "Alpha" para despertar.');
+        setSubstatus('Suspendido. Di "Macaria" para despertar.');
       }
       return;
     }
@@ -258,111 +255,82 @@ Prohibido:
       return "Orden no reconocida";
     }
   }
+  
 
 /* =====================================================
-   🔊 VOZ EXPLICATIVA DEL SISTEMA (ALFA) — SUPER ROBUSTA
+   🔊 VOZ EXPLICATIVA CON OPENAI (SHIMMER)
 ===================================================== */
+
 const infoBtn = document.getElementById("infoVoiceBtn");
 
-function getBestSpanishVoice() {
-  const voices = window.speechSynthesis.getVoices() || [];
-  const es = voices.filter(v => (v.lang || "").toLowerCase().startsWith("es"));
+async function speakWithOpenAI(text) {
+  const apiKey = await loadApiKeyFromMockAPI();
 
-  const score = (v) => {
-    const n = (v.name || "").toLowerCase();
-    let s = 0;
-    if (n.includes("natural")) s += 6;
-    if (n.includes("google")) s += 5;
-    if (n.includes("microsoft")) s += 4;
-    if (n.includes("mex") || n.includes("méx")) s += 3;
-    if (n.includes("spanish") || n.includes("español")) s += 2;
-    return s;
-  };
+  if (!apiKey) {
+    setSubstatus("No hay API Key para generar audio.");
+    return;
+  }
 
-  es.sort((a, b) => score(b) - score(a));
-  return es[0] || null;
-}
+  try {
+    setSubstatus("Generando voz...");
 
-function waitForVoices(timeoutMs = 1500) {
-  return new Promise((resolve) => {
-    const synth = window.speechSynthesis;
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini-tts",
+        voice: "shimmer",
+        input: text
+      })
+    });
 
-    // Si ya hay voces, listo
-    const existing = synth.getVoices();
-    if (existing && existing.length) return resolve(existing);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
 
-    let done = false;
-    const timer = setTimeout(() => {
-      if (done) return;
-      done = true;
-      synth.onvoiceschanged = null;
-      resolve(synth.getVoices() || []);
-    }, timeoutMs);
+    const blob = await response.blob();
+    const audioUrl = URL.createObjectURL(blob);
+    const audio = new Audio(audioUrl);
 
-    synth.onvoiceschanged = () => {
-      if (done) return;
-      const v = synth.getVoices();
-      if (v && v.length) {
-        done = true;
-        clearTimeout(timer);
-        synth.onvoiceschanged = null;
-        resolve(v);
-      }
+    audio.play();
+
+    audio.onended = () => {
+      URL.revokeObjectURL(audioUrl);
+      setSubstatus("Listo.");
     };
 
-    // “pica” al navegador para que cargue voces
-    synth.getVoices();
-  });
+  } catch (err) {
+    console.error("TTS error:", err);
+    setSubstatus("Error al generar voz.");
+  }
 }
 
-async function speakIntro() {
-  const synth = window.speechSynthesis;
-
-  // Esperar voces (en GitHub Pages a veces llegan tarde)
-  await waitForVoices();
-
-  const texto = [
-    "Hola. Mi nombre es Alfa.",
-    "Soy un programa de control por voz impulsado por inteligencia artificial.",
-    "Escucho tus instrucciones desde el micrófono y las interpreto para convertirlas en acciones.",
-    "Si no detecto voz durante unos segundos, entro en modo suspendido.",
-    "Para despertarme, solo di: Alfa.",
-    "En la parte de abajo están las posibles instrucciones.",
-    "Cuando quieras, estoy listo para recibir tus órdenes."
-  ].join("  ");
-
-  const msg = new SpeechSynthesisUtterance(texto);
-  msg.lang = "es-MX";
-  msg.rate = 0.92;
-  msg.pitch = 1.05; // bonito y natural
-  msg.volume = 1;
-
-  const v = getBestSpanishVoice();
-  if (v) msg.voice = v;
-
-  // Feedback opcional en UI
-  // infoBtn?.classList.add("speaking");
-
-  // En algunos navegadores ayuda cancelar y hablar con micro delay
-  synth.cancel();
-  setTimeout(() => synth.speak(msg), 80);
-
-  msg.onend = () => {
-    // infoBtn?.classList.remove("speaking");
-  };
-  msg.onerror = () => {
-    // infoBtn?.classList.remove("speaking");
-  };
-}
-
-if (infoBtn && "speechSynthesis" in window) {
+if (infoBtn) {
   infoBtn.addEventListener("click", async () => {
-    try {
-      await speakIntro();
-    } catch (e) {
-      console.warn("TTS error:", e);
-    }
+
+    const texto = `
+Hola. Soy Macaria, tu asistente de control por voz.
+
+Estoy lista para ayudarte.
+Puedes decir comandos como avanzar, retroceder, detener,
+vuelta derecha, vuelta izquierda,
+noventa grados derecha o izquierda,
+o giro completo de trescientos sesenta grados.
+
+Si no detecto voz durante unos segundos,
+entro en modo suspendido.
+
+Para activarme, solo di: Macaria, seguido de una instrucción
+
+Estoy lista para recibir tus órdenes.
+`;
+
+    await speakWithOpenAI(texto);
+
   });
-} 
+}
 
 });
